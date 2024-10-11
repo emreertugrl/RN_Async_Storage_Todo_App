@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import CustomText from './src/CustomText';
 import uuid from 'react-native-uuid';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -14,23 +14,55 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const App = () => {
   const [todo, setTodo] = useState('');
   const [todos, setTodos] = useState([]);
+  const [isOpen, setIsOpen] = useState(false);
 
-  const saveTodos = async todos => {
+  const saveTodos = async saveTodo => {
     try {
       // asyncStorage ekleme setItem ile yapılır
       // bizden 2 değer ister: birincisi key string,
       // ikincisi: value(string), obhjeyi stringe çevirmemiz lazım
-      await AsyncStorage.setItem('todos', JSON.stringify(updateTodos));
+      await AsyncStorage.setItem('todos', JSON.stringify(saveTodo));
     } catch (error) {
       console.log('error', error);
     }
   };
 
   const addTodo = () => {
-    const updatedTodos = [...todos, {id: uuid.v4(), text: todo}];
-    setTodos(updatedTodos);
-    // saveTodos(updatedTodos)
+    if (todo) {
+      const updatedTodos = [...todos, {id: uuid.v4(), text: todo}];
+      setTodos(updatedTodos);
+      saveTodos(updatedTodos);
+    }
   };
+
+  const loadTodos = async () => {
+    try {
+      // AsyncStorage'dan todos'u çekmek için getItem ile yapılır
+      const storedData = await AsyncStorage.getItem('todos');
+      // JSON.parse ile stringi objeye çevirdik
+      if (storedData) {
+        const data = JSON.parse(storedData);
+        setTodos(data);
+      }
+    } catch (error) {
+      console.log('error', error);
+    }
+  };
+
+  const deleteTodo = async id => {
+    try {
+      await AsyncStorage.removeItem('todos');
+      const updatedTodos = todos?.filter(todo => todo.id !== id);
+      setTodos(updatedTodos);
+      saveTodos(updatedTodos);
+    } catch (error) {
+      console.log('error', error);
+    }
+  };
+
+  useEffect(() => {
+    loadTodos();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -57,17 +89,20 @@ const App = () => {
         <FlatList
           keyExtractor={item => item.id?.toString()}
           data={todos}
-          renderItem={item => (
+          renderItem={({item}) => (
             <View style={styles.todoItem}>
-              <CustomText>text</CustomText>
+              <CustomText>{item?.text}</CustomText>
               <View style={{flexDirection: 'row'}}>
                 <View style={styles.buttonContainer}>
-                  <TouchableOpacity style={styles.button}>
+                  <TouchableOpacity
+                    onPress={() => deleteTodo(item?.id)}
+                    style={styles.button}>
                     <CustomText style={styles.buttonText}>Delete</CustomText>
                   </TouchableOpacity>
                 </View>
                 <View style={styles.buttonContainer}>
                   <TouchableOpacity
+                    onPress={() => setIsOpen(!isOpen)}
                     style={[styles.button, styles.updateButton]}>
                     <CustomText style={styles.buttonText}>Update</CustomText>
                   </TouchableOpacity>
@@ -76,6 +111,7 @@ const App = () => {
             </View>
           )}
         />
+        {isOpen && <Modal />}
       </SafeAreaView>
     </View>
   );
