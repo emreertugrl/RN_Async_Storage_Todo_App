@@ -10,11 +10,16 @@ import React, {useEffect, useState} from 'react';
 import CustomText from './src/CustomText';
 import uuid from 'react-native-uuid';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Dialog from 'react-native-dialog';
 
 const App = () => {
   const [todo, setTodo] = useState('');
   const [todos, setTodos] = useState([]);
-  const [isOpen, setIsOpen] = useState(false);
+
+  // modal
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [newText, setNewText] = useState('');
+  const [editTodoId, setEditTodoId] = useState(null);
 
   const saveTodos = async saveTodo => {
     try {
@@ -33,6 +38,7 @@ const App = () => {
       setTodos(updatedTodos);
       saveTodos(updatedTodos);
     }
+    setTodo(' ');
   };
 
   const loadTodos = async () => {
@@ -59,6 +65,59 @@ const App = () => {
       console.log('error', error);
     }
   };
+  // !ios için
+  // const updateTodos = id => {
+  //   // id'sini bildiğimiz elemanı todos içinde bulmak için find metodu kullanılır
+  //   const exitingTodo = todos.find(x => x.id === id);
+
+  //   if (!exitingTodo) return;
+  //   Alert.prompt(
+  //     'Edit Todo', //kullanıcıya gösterilecek başlık
+  //     'Update', //kullanıcının güncelleme yapması için buton üzerinde yazan metindir
+  //     // kullanıcının giriş yaptığı metni işleyen fonksiyondur.
+  //     newUpdateText => {
+  //       if (newUpdateText.trim()) {
+  //         const updatedTodos = todos.map(todo =>
+  //.          todo.id === id ? {...todo, text: newUpdateText} : todo,
+  //         );
+  //         setTodos(updatedTodos); //. todos state'i güncellendi
+  //         saveTodos(updatedTodos); //asyncStorage güncellendi
+  //       }
+  //     },
+  //     'plain-text', //sadece text girebilir string olarak algılar girilenleri
+  //     exitingTodo.text, // default value olarak gelir
+  //   );
+  // };
+  // !android modal kodları
+  const updateTodos = id => {
+    const exitingTodo = todos.find(x => x.id === id);
+    if (!exitingTodo) return;
+
+    setEditTodoId(id);
+    setNewText(exitingTodo.text);
+    setDialogVisible(true);
+  };
+
+  const handleCancel = () => {
+    setDialogVisible(false);
+    setNewText('');
+  };
+
+  const handleSave = () => {
+    if (newText.trim()) {
+      const updatedTodos = todos.map(todo =>
+        todo.id === editTodoId ? {...todo, text: newText} : todo,
+      );
+      setTodos(updatedTodos);
+      saveTodos(updatedTodos);
+      setDialogVisible(false);
+      setNewText('');
+    } else {
+      alert('Todo metni boş olamaz.');
+    }
+  };
+
+  // ! =================================================
 
   useEffect(() => {
     loadTodos();
@@ -77,6 +136,7 @@ const App = () => {
               style={styles.input}
               placeholder="Type a Todo"
               placeholderTextColor={'grey'}
+              value={todo}
             />
             <TouchableOpacity
               onPress={addTodo}
@@ -85,6 +145,12 @@ const App = () => {
             </TouchableOpacity>
           </View>
         </View>
+
+        {todos.length === 0 && (
+          <CustomText style={styles.noTodosText}>
+            Todo Bulunmamaktadır.
+          </CustomText>
+        )}
 
         <FlatList
           keyExtractor={item => item.id?.toString()}
@@ -102,7 +168,7 @@ const App = () => {
                 </View>
                 <View style={styles.buttonContainer}>
                   <TouchableOpacity
-                    onPress={() => setIsOpen(!isOpen)}
+                    onPress={() => updateTodos(item?.id)}
                     style={[styles.button, styles.updateButton]}>
                     <CustomText style={styles.buttonText}>Update</CustomText>
                   </TouchableOpacity>
@@ -111,7 +177,17 @@ const App = () => {
             </View>
           )}
         />
-        {isOpen && <Modal />}
+
+        <Dialog.Container visible={dialogVisible}>
+          <Dialog.Title>Edit Todo</Dialog.Title>
+          <Dialog.Description>Update</Dialog.Description>
+          <Dialog.Input
+            value={newText}
+            onChangeText={text => setNewText(text)}
+          />
+          <Dialog.Button label="Cancel" onPress={handleCancel} />
+          <Dialog.Button label="OK" onPress={handleSave} />
+        </Dialog.Container>
       </SafeAreaView>
     </View>
   );
@@ -173,5 +249,26 @@ const styles = StyleSheet.create({
   },
   updateButton: {
     backgroundColor: 'blue',
+  },
+  noTodosText: {
+    marginTop: 50,
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: 'bold',
+    paddingVertical: 20,
+    borderRadius: 10,
+    backgroundColor: '#f9f9f9',
+    borderWidth: 1,
+    borderColor: 'gray',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    elevation: 5,
+    paddingHorizontal: 10,
   },
 });
